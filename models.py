@@ -23,8 +23,7 @@ Base = declarative_base(bind=engine)
 
 
 class Ad(Base):
-
-    __tablename__ = 'app_ads'
+    __tablename__ = "app_ads"
 
     id = Column(Integer, primary_key=True)
     headline = Column(String, nullable=False, unique=True, index=True)
@@ -34,8 +33,7 @@ class Ad(Base):
 
 
 class User(Base):
-
-    __tablename__ = 'app_users'
+    __tablename__ = "app_users"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True, index=True)
