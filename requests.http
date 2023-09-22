@@ -1,0 +1,70 @@
+@base_url = http://127.0.0.1:5000
+
+
+GET {{base_url}}/users/4
+Content-Type: application/json
+
+### СОЗДАЕМ ПОЛЬЗОВАТЕЛЯ
+
+POST {{base_url}}/users/
+Content-Type: application/json
+
+{
+    "name": "user4",
+    "password": "123456789"
+}
+
+###
+
+PATCH {{base_url}}/users/2
+Content-Type: application/json
+
+{
+    "name": "user2",
+    "password": "123456789"
+}
+
+###
+
+DELETE {{base_url}}/users/4
+Content-Type: application/json
+
+###
+# ЛОГИНИМСЯ ~~~~~~~~~~~~~~~~~~~~~~~~~~
+POST {{base_url}}/login
+Content-Type: application/json
+
+{
+    "username": "user1",
+    "password": "123456789"
+}
+
+###
+# РАЗМЕЩАЕМ ОБЪЯВЛЕНИЕ
+POST {{base_url}}/ads/
+Content-Type: application/json
+
+{
+    "headline": "Заголовок",
+    "description": "Текст объявления"
+}
+
+###
+
+GET {{base_url}}/ads/1
+Content-Type: application/json
+
+###
+
+PATCH {{base_url}}/ads/1
+Content-Type: application/json
+
+{
+    "headline": "Заголовок1",
+    "description": "Текст объявления1"
+}
+
+###
+
+DELETE {{base_url}}/ads/1
+Content-Type: application/json
