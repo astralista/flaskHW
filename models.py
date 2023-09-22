@@ -2,9 +2,10 @@ import atexit
 import os
 
 from dotenv import load_dotenv
-from sqlalchemy import Column, DateTime, Integer, String, create_engine, func
+from sqlalchemy import (Column, DateTime, ForeignKey, Integer, String,
+                        create_engine, func)
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker
 
 load_dotenv()
 
@@ -29,7 +30,13 @@ class Ad(Base):
     headline = Column(String, nullable=False, unique=True, index=True)
     description = Column(String)
     creation_time = Column(DateTime, server_default=func.now())
-    owner = Column(Integer)
+    owner_id = Column(
+        Integer, ForeignKey("app_users.id")
+    )
+
+    owner = relationship(
+        "User", back_populates="ads"
+    )
 
 
 class User(Base):
@@ -39,6 +46,10 @@ class User(Base):
     name = Column(String, nullable=False, unique=True, index=True)
     password = Column(String, nullable=False)
     creation_time = Column(DateTime, server_default=func.now())
+
+    ads = relationship(
+        "Ad", back_populates="owner"
+    )
 
 
 Base.metadata.create_all()

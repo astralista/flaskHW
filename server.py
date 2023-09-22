@@ -1,13 +1,13 @@
 import json
 from hashlib import md5
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
 from flask.views import MethodView
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from models import Ad, Session, User
-from schema import CreateUser, UpdateUser
+from schema import CreateAd, CreateUser, UpdateAd, UpdateUser
 
 app = Flask("app")
 
@@ -93,10 +93,100 @@ class UserView(MethodView):
             return jsonify({"status": "success"})
 
 
+def get_ad(ads_id: int, session: Session):
+    user = session.get(Ad, ads_id)
+    if user is None:
+        raise HttpError(404, "Ad not found")
+    return user
+
+
+class AdsView(MethodView):
+    def get(self, ads_id):
+        with Session() as ses:
+            ad = get_ad(ads_id, ses)
+            return jsonify({"id": ad.id, "headline": ad.headline,
+                            'description': ad.description, 'owner': ad.owner_id})
+
+    def post(self):
+        # Проверка, аутентифицирован ли пользователь
+        if 'user_id' not in session:
+            return jsonify({"message": "Authorization required"}), 401
+
+        current_user_id = session['user_id']
+        json_data = validate(request.json, CreateAd)
+        with Session() as ses:
+            new_ad = Ad(headline=json_data['headline'], description=json_data['description'], owner_id=current_user_id)
+            ses.add(new_ad)
+            ses.commit()
+            return jsonify({"id": new_ad.id})
+
+    def patch(self, ads_id):
+        # Проверка, аутентифицирован ли пользователь
+        if 'user_id' not in session:
+            return jsonify({"message": "Authorization required"}), 401
+
+        current_user_id = session['user_id']
+        json_data = validate(request.json, UpdateAd)
+        with Session() as ses:
+            ad = ses.query(Ad).filter_by(id=ads_id).first()
+            if not ad:
+                return jsonify({"message": "Ad not found"}), 404
+            if ad.owner_id != current_user_id:
+                return jsonify({"message": "You don't have permissions to editing"}), 403
+            for key, value in json_data.items():
+                setattr(ad, key, value)
+            ses.commit()
+            return jsonify({"status": "success"})
+
+    def delete(self, ads_id):
+        # Проверка, аутентифицирован ли пользователь
+        if 'user_id' not in session:
+            return jsonify({"message": "Authorization required"}), 401
+
+        current_user_id = session['user_id']
+        with Session() as ses:
+            ad = ses.query(Ad).filter_by(id=ads_id).first()
+            if not ad:
+                return jsonify({"message": "Ad not found"}), 404
+            if ad.owner_id != current_user_id:
+                return jsonify({"message": "You don't have permissions to delete"}), 403
+            ses.delete(ad)
+            ses.commit()
+            return jsonify({"status": "success"})
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.json
+    username = data.get("username")
+    password = data.get("password")
+
+    # Поиск пользователя в базе данных по логину
+    with Session() as ses:
+        user = ses.query(User).filter_by(name=username).first()
+        if not user:
+            return jsonify({"message": "Пользователь не найден"}), 401
+
+        # Проверка хешированного пароля
+        if user.password == hash_password(password):
+            # Аутентификация успешна
+            session['user_id'] = user.id  # Устанавливаем user_id в сессию
+            return jsonify({"message": "Аутентификация успешна"})
+        else:
+            # Неправильный пароль
+            return jsonify({"message": "Неправильный пароль"}), 401
+
+
 users_view = UserView.as_view("users")
 app.add_url_rule("/users/", view_func=users_view, methods=["POST"])
 app.add_url_rule(
     "/users/<int:users_id>", view_func=users_view, methods=["GET", "PATCH", "DELETE"]
+)
+
+ads_view = AdsView.as_view("ads")
+app.add_url_rule("/ads/", view_func=ads_view, methods=["POST"])
+app.add_url_rule(
+    "/ads/<int:ads_id>", view_func=ads_view, methods=["GET", "PATCH", "DELETE"]
 )
 
 if __name__ == "__main__":
