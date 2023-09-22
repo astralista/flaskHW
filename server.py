@@ -10,6 +10,9 @@ from models import Ad, Session, User
 from schema import CreateAd, CreateUser, UpdateAd, UpdateUser
 
 app = Flask("app")
+app.secret_key = 'super secret key'
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['JSON_AS_ASCII'] = False
 
 
 class HttpError(Exception):
@@ -53,18 +56,18 @@ def get_user(user_id: int, session: Session):
 
 class UserView(MethodView):
     def get(self, users_id):
-        with Session() as session:
-            user = get_user(users_id, session)
+        with Session() as ses:
+            user = get_user(users_id, ses)
             return jsonify({"id": user.id, "name": user.name})
 
     def post(self):
         json_data = validate(request.json, CreateUser)
         json_data["password"] = hash_password(json_data["password"])
-        with Session() as session:
+        with Session() as ses:
             new_user = User(**json_data)
-            session.add(new_user)
+            ses.add(new_user)
             try:
-                session.commit()
+                ses.commit()
             except IntegrityError:
                 raise HttpError(408, "User already exists")
             return jsonify({"id": new_user.id})
@@ -74,22 +77,22 @@ class UserView(MethodView):
         json_data = validate(request.json, UpdateUser)
         if "password" in json_data:
             json_data["password"] = hash_password(json_data["password"])
-        with Session() as session:
-            user = get_user(users_id, session)
+        with Session() as ses:
+            user = get_user(users_id, ses)
             for key, value in json_data.items():
                 setattr(user, key, value)
-            session.add(user)
+            ses.add(user)
             try:
-                session.commit()
+                ses.commit()
             except IntegrityError:
                 raise HttpError(408, "User already exists")
             return jsonify({"status": "success"})
 
     def delete(self, users_id):
-        with Session() as session:
-            user = get_user(users_id, session)
-            session.delete(user)
-            session.commit()
+        with Session() as ses:
+            user = get_user(users_id, ses)
+            ses.delete(user)
+            ses.commit()
             return jsonify({"status": "success"})
 
 
@@ -104,35 +107,48 @@ class AdsView(MethodView):
     def get(self, ads_id):
         with Session() as ses:
             ad = get_ad(ads_id, ses)
-            return jsonify({"id": ad.id, "headline": ad.headline,
-                            'description': ad.description, 'owner': ad.owner_id})
+            return jsonify(
+                {
+                    "id": ad.id,
+                    "headline": ad.headline,
+                    "description": ad.description,
+                    "owner": ad.owner_id,
+                }
+            )
 
     def post(self):
         # Проверка, аутентифицирован ли пользователь
-        if 'user_id' not in session:
+        if "user_id" not in session:
             return jsonify({"message": "Authorization required"}), 401
 
-        current_user_id = session['user_id']
+        current_user_id = session["user_id"]
         json_data = validate(request.json, CreateAd)
         with Session() as ses:
-            new_ad = Ad(headline=json_data['headline'], description=json_data['description'], owner_id=current_user_id)
+            new_ad = Ad(
+                headline=json_data["headline"],
+                description=json_data["description"],
+                owner_id=current_user_id,
+            )
             ses.add(new_ad)
             ses.commit()
             return jsonify({"id": new_ad.id})
 
     def patch(self, ads_id):
         # Проверка, аутентифицирован ли пользователь
-        if 'user_id' not in session:
+        if "user_id" not in session:
             return jsonify({"message": "Authorization required"}), 401
 
-        current_user_id = session['user_id']
+        current_user_id = session["user_id"]
         json_data = validate(request.json, UpdateAd)
         with Session() as ses:
             ad = ses.query(Ad).filter_by(id=ads_id).first()
             if not ad:
                 return jsonify({"message": "Ad not found"}), 404
             if ad.owner_id != current_user_id:
-                return jsonify({"message": "You don't have permissions to editing"}), 403
+                return (
+                    jsonify({"message": "You don't have permissions to editing"}),
+                    403,
+                )
             for key, value in json_data.items():
                 setattr(ad, key, value)
             ses.commit()
@@ -140,10 +156,10 @@ class AdsView(MethodView):
 
     def delete(self, ads_id):
         # Проверка, аутентифицирован ли пользователь
-        if 'user_id' not in session:
+        if "user_id" not in session:
             return jsonify({"message": "Authorization required"}), 401
 
-        current_user_id = session['user_id']
+        current_user_id = session["user_id"]
         with Session() as ses:
             ad = ses.query(Ad).filter_by(id=ads_id).first()
             if not ad:
@@ -170,7 +186,7 @@ def login():
         # Проверка хешированного пароля
         if user.password == hash_password(password):
             # Аутентификация успешна
-            session['user_id'] = user.id  # Устанавливаем user_id в сессию
+            session["user_id"] = user.id  # Устанавливаем user_id в сессию
             return jsonify({"message": "Аутентификация успешна"})
         else:
             # Неправильный пароль
