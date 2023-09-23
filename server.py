@@ -13,7 +13,7 @@ app = Flask("app")
 app.secret_key = "super secret key"
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["JSON_AS_ASCII"] = False
-app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8'
+app.config["JSONIFY_MIMETYPE"] = "application/json; charset=utf-8"
 
 
 @app.route("/")
@@ -187,20 +187,29 @@ def login():
     username = data.get("username")
     password = data.get("password")
 
-    with (Session() as ses):
+    with Session() as ses:
         user = ses.query(User).filter_by(name=username).first()
         if not user:
-            return jsonify({"message": "Пользователь не найден"}
-                           ), 401, {'Content-Type': 'application/json; charset=utf-8'}
+            return (
+                jsonify({"message": "Пользователь не найден"}),
+                401,
+                {"Content-Type": "application/json; charset=utf-8"},
+            )
 
         if user.password == hash_password(password):
             session["user_id"] = user.id
-            return jsonify({"message": "Аутентификация успешна"}
-                           ), 200, {'Content-Type': 'application/json; charset=utf-8'}
+            return (
+                jsonify({"message": "Аутентификация успешна"}),
+                200,
+                {"Content-Type": "application/json; charset=utf-8"},
+            )
 
         else:
-            return jsonify({"message": "Неправильный пароль"}
-                           ), 401, {'Content-Type': 'application/json; charset=utf-8'}
+            return (
+                jsonify({"message": "Неправильный пароль"}),
+                401,
+                {"Content-Type": "application/json; charset=utf-8"},
+            )
 
 
 users_view = UserView.as_view("users")
