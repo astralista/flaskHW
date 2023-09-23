@@ -10,32 +10,33 @@ POST {{base_url}}/users/
 Content-Type: application/json
 
 {
+    "name": "user1",
+    "password": "123456789"
+}
+
+###
+
+PATCH {{base_url}}/users/4
+Content-Type: application/json
+
+{
     "name": "user4",
     "password": "123456789"
 }
 
 ###
 
-PATCH {{base_url}}/users/2
-Content-Type: application/json
-
-{
-    "name": "user2",
-    "password": "123456789"
-}
-
-###
-
-DELETE {{base_url}}/users/4
+DELETE {{base_url}}/users/2
 Content-Type: application/json
 
 ###
 # ЛОГИНИМСЯ ~~~~~~~~~~~~~~~~~~~~~~~~~~
 POST {{base_url}}/login
 Content-Type: application/json
+Accept-Encoding: "utf-8"
 
 {
-    "username": "user1",
+    "username": "user2",
     "password": "123456789"
 }
 
@@ -45,26 +46,26 @@ POST {{base_url}}/ads/
 Content-Type: application/json
 
 {
-    "headline": "Заголовок",
-    "description": "Текст объявления"
+    "headline": "Headline1",
+    "description": "Text of the texts"
 }
 
 ###
 
-GET {{base_url}}/ads/1
-Content-Type: application/json
+GET {{base_url}}/ads/4
+Content-Type: application/json; charset=utf-8
 
 ###
 
-PATCH {{base_url}}/ads/1
-Content-Type: application/json
+PATCH {{base_url}}/ads/4
+Content-Type: application/json; charset=utf-8
 
 {
-    "headline": "Заголовок1",
-    "description": "Текст объявления1"
+    "headline": "Headline2",
+    "description": "Replaced text"
 }
 
 ###
 
-DELETE {{base_url}}/ads/1
+DELETE {{base_url}}/ads/4
 Content-Type: application/json

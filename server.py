@@ -10,9 +10,16 @@ from models import Ad, Session, User
 from schema import CreateAd, CreateUser, UpdateAd, UpdateUser
 
 app = Flask("app")
-app.secret_key = 'super secret key'
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['JSON_AS_ASCII'] = False
+app.secret_key = "super secret key"
+app.config["SESSION_TYPE"] = "filesystem"
+app.config["JSON_AS_ASCII"] = False
+app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8'
+
+
+@app.route("/")
+def default():
+    result = "\u20AC"
+    return jsonify(result=result), 200, {"Content-Type": "text/css; charset=utf-8"}
 
 
 class HttpError(Exception):
@@ -117,24 +124,28 @@ class AdsView(MethodView):
             )
 
     def post(self):
-        # Проверка, аутентифицирован ли пользователь
         if "user_id" not in session:
             return jsonify({"message": "Authorization required"}), 401
 
         current_user_id = session["user_id"]
         json_data = validate(request.json, CreateAd)
         with Session() as ses:
+            user = ses.query(User).filter_by(id=current_user_id).first()
+            if not user:
+                return jsonify({"message": "User not found"}), 404
             new_ad = Ad(
                 headline=json_data["headline"],
                 description=json_data["description"],
                 owner_id=current_user_id,
             )
             ses.add(new_ad)
-            ses.commit()
+            try:
+                ses.commit()
+            except IntegrityError:
+                return jsonify({"message": "Error creating ad"}), 500
             return jsonify({"id": new_ad.id})
 
     def patch(self, ads_id):
-        # Проверка, аутентифицирован ли пользователь
         if "user_id" not in session:
             return jsonify({"message": "Authorization required"}), 401
 
@@ -155,7 +166,6 @@ class AdsView(MethodView):
             return jsonify({"status": "success"})
 
     def delete(self, ads_id):
-        # Проверка, аутентифицирован ли пользователь
         if "user_id" not in session:
             return jsonify({"message": "Authorization required"}), 401
 
@@ -177,20 +187,20 @@ def login():
     username = data.get("username")
     password = data.get("password")
 
-    # Поиск пользователя в базе данных по логину
-    with Session() as ses:
+    with (Session() as ses):
         user = ses.query(User).filter_by(name=username).first()
         if not user:
-            return jsonify({"message": "Пользователь не найден"}), 401
+            return jsonify({"message": "Пользователь не найден"}
+                           ), 401, {'Content-Type': 'application/json; charset=utf-8'}
 
-        # Проверка хешированного пароля
         if user.password == hash_password(password):
-            # Аутентификация успешна
-            session["user_id"] = user.id  # Устанавливаем user_id в сессию
-            return jsonify({"message": "Аутентификация успешна"})
+            session["user_id"] = user.id
+            return jsonify({"message": "Аутентификация успешна"}
+                           ), 200, {'Content-Type': 'application/json; charset=utf-8'}
+
         else:
-            # Неправильный пароль
-            return jsonify({"message": "Неправильный пароль"}), 401
+            return jsonify({"message": "Неправильный пароль"}
+                           ), 401, {'Content-Type': 'application/json; charset=utf-8'}
 
 
 users_view = UserView.as_view("users")
